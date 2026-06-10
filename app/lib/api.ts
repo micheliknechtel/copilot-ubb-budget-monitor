@@ -95,10 +95,30 @@ export function groupBudgetsByScope(budgets: Budget[]) {
   };
 }
 
+function splitCsvLine(line: string): string[] {
+  const cols: string[] = [];
+  let cur = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { cur += '"'; i++; }
+      else { inQuotes = !inQuotes; }
+    } else if (ch === ',' && !inQuotes) {
+      cols.push(cur.trim());
+      cur = '';
+    } else {
+      cur += ch;
+    }
+  }
+  cols.push(cur.trim());
+  return cols;
+}
+
 export function parseCsv(text: string): CsvRow[] {
   const lines = text.trim().split('\n');
   if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
+  const headers = splitCsvLine(lines[0]).map(h => h.toLowerCase());
   const dateIdx = headers.indexOf('date');
   const usernameIdx = headers.indexOf('username');
   const aicIdx = headers.indexOf('aic_quantity');
@@ -108,7 +128,7 @@ export function parseCsv(text: string): CsvRow[] {
   if (usernameIdx === -1 || aicIdx === -1) return [];
 
   return lines.slice(1).filter(l => l.trim()).map(line => {
-    const cols = line.split(',').map(c => c.trim());
+    const cols = splitCsvLine(line);
     return {
       date: cols[dateIdx] || '',
       username: cols[usernameIdx] || '',
